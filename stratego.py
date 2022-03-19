@@ -110,7 +110,7 @@ for color in colors:
         board.append([])
 
 
-
+print(board)
 
 clock = pg.time.Clock()
 
