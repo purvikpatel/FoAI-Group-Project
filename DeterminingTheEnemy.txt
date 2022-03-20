@@ -1,0 +1,12 @@
+One of the main strategic decisions within Stratego is whether to attack
+or not. This decision is keyed off of two main important factors: first,
+whether or not you are sure that you are stronger then the opponent, and 
+second, whether the information to be gained is worth the risk of facing
+an unknown enemy piece. We will be using Bayesian inference/probability
+to attempt to determine the given identity of an unknown enemy piece. We
+should be able to utilize different observed behaviors and movements of 
+the enemy to establish a probabilistic level of certainty across a range of
+possible enemy units. For instance, if an enemy at a given position has
+never moved, and the game is sufficiently advance, it is highly probable
+that the unit is either a bomb or the flag. These sorts of deductions and 
+more will be explored by our implementation.
