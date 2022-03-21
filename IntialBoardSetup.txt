@@ -1,0 +1,14 @@
+The first thing a player needs to do whenever a new game is of stratego begins is to arrange
+his 40 pieces on his side of the board. Unlike traditional games like chess, stratego does 
+not have any fixed starting positions for all the individual pieces. Each player has to start 
+with their setup and these starting setups define the fundamental strategy a player is going 
+within that game. Coming up with good starting board positions is important for winning the game.
+We will use the genetic algorithm and steepest hill algorithm to come up with a good starting board
+position for the AI agent. Starting position does not win us the game but helps us start the game 
+strongly. there can be many good starting positions so there won't be a proper goal state 
+but we will try to implement it to start with a random state and improve it in a fixed amount of 
+iterations using GA or steepest hill and start the game with that state. To determine if one state 
+is better than the other we will have to check if our flag is protected well, all the other pieces
+are arranged in a way where we have a good defence against the enemy team and we also have good attacking
+pieces in our front row to initiate our offence. Based on the setup reached by the algorithm, we will 
+also figure out what strategy we should use to start the game, aggressive or defensive?
