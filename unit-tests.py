@@ -35,8 +35,7 @@ class TestBoard(unittest.TestCase):
 
 class TestMovement(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(self):
+    def setUp(self):
         self.board = stratego.Board()
         self.board.set_at("blue_bomb", 0, 0)
         self.board.set_at("blue_one", 1, 1)
@@ -80,12 +79,51 @@ class TestMovement(unittest.TestCase):
         # Invalid moves around other pieces
         self.assertInvalidMove(4,4,3,4, "Place already occuppied by piece of the same color.")
 
-        # TODO: moves into no-mans land
+        # Invalid to jump over a piece
+        self.board.set_at("blue_five", 5,8)
+        self.assertInvalidMove(9,8,0,8, "Nine/Scout should not be able to jump over pieces.")
+
+        # Invalid move into no-mans land
+        self.board.set_at("blue_five", 3,2)
+        self.assertInvalidMove(3,2,4,2, "Illegal move into no-man's land.")
+        self.board.set_at("blue_five", 3,3)
+        self.assertInvalidMove(3,3,4,3, "Illegal move into no-man's land.")        
+        self.board.set_at("blue_five", 3,6)
+        self.assertInvalidMove(3,6,4,6, "Illegal move into no-man's land.")
+        self.board.set_at("blue_five", 3,7)
+        self.assertInvalidMove(3,7,4,7, "Illegal move into no-man's land.")        
+        self.board.set_at("red_five", 6,2)
+        self.assertInvalidMove(6,2,5,2, "Illegal move into no-man's land.")
+        self.board.set_at("red_five", 6,3)
+        self.assertInvalidMove(6,3,5,3, "Illegal move into no-man's land.")        
+        self.board.set_at("red_five", 6,6)
+        self.assertInvalidMove(6,6,5,6, "Illegal move into no-man's land.")
+        self.board.set_at("red_five", 6,7)
+        self.assertInvalidMove(6,7,5,7, "Illegal move into no-man's land.")
+
+        # Invalid to jump over no-mans land
+        self.board.set_at("blue_nine", 5,0)
+        self.assertInvalidMove(5,0,5,5, "Nine/Scout should not be able to jump over no-man's land.")
+
+    def test_capturing(self):
+        # Common attacking scenarios
+
+        # Tie goes to the attacker
+        self.assertVictor("blue_five", "red_five", "blue_five")
+        self.assertVictor("red_five", "blue_five", "red_five")
+        self.assertVictor("red_five", "blue_bomb", "blue_bomb")
+        self.assertVictor("blue_bomb", "red_five", "blue_bomb") #bomb's can't attack - but if they could...they'd win
         
         
+        # Common illegal capturing scenarios
+        #self.assertIsNotCapture("blue_five", "blue_five")
         
         
 
+    def assertVictor(self, attacker, defender, expectedVictor):
+        actual = self.board.attack(attacker, defender)
+        self.assertEqual(actual, expectedVictor, f"Expected {expectedVictor} to win the fight.")
+        
     def assertValidMove(self, row, column, d_row, d_column, message):
         actual = self.board.is_valid_move(row, column, d_row, d_column)
         self.assertTrue(actual, "Piece should be able to move. " + message)

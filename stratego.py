@@ -39,6 +39,8 @@ class Board:
             "nine"  : "9",
             "bomb"  : "B" }
 
+        self.no_mans_land = set([(4,2),(4,3),(5,2),(5,3),(4,6),(4,7),(5,6),(5,7)])
+
     def initialize(self):
         """Create an empty board and fill it with None"""
         self.board = []
@@ -94,10 +96,12 @@ class Board:
         """Returns True if the piece at (row,column) is allowed to move to (target_row, target_column)"""
         p = self.is_occuppied(row, column)
         if not p:
-            raise(f"MoveInvalid - no piece located at ({row}, {column}).")
+            raise Exception(f"MoveInvalid - no piece located at ({row}, {column}).")
 
+        if (target_row, target_column) in self.no_mans_land:
+            return False
         # Check if we are trying to move an immobile piece
-        if self.is_bomb(p) or self.is_flag(p):
+        elif self.is_bomb(p) or self.is_flag(p):
             return False
         # Check if location is already occuppied by same color piece
         elif self.is_occuppied(target_row, target_column):
@@ -112,11 +116,27 @@ class Board:
         elif abs(row - target_row) > 1 or abs(column - target_column) > 1:
             # Allow the scout to move > 1 space
             if self.is_scout(p):
-                return True
+                return self.is_path_clear(row, column, target_row, target_column)
             return False
         return True
             
-        
+    def is_path_clear(self, row, column, target_row, target_column):
+        start_row = min(row, target_row)
+        end_row = max(row, target_row)
+        start_column = min(column, target_column)
+        end_column = max(column, target_column)
+        while(True):
+            start_row += 0 if start_row == end_row else 1
+            start_column += 0 if start_column == end_column else 1
+            if (start_row == end_row and start_column == end_column):
+                return True
+            elif self.is_occuppied(start_row, start_column):
+                return False
+            elif (start_row, start_column) in self.no_mans_land:
+                return False
+        return True
+    
+    
     def is_bomb(self, piece):
         return "bomb" in piece
 
@@ -126,11 +146,28 @@ class Board:
     def is_scout(self, piece):
         return "nine" in piece
 
-    def color_at(self, row, column):
-        p = self.get_from(row, column)
-        if "red" in p:
+    def attack(self, attacker, defender):
+        """Return the piece that is victorious"""
+        if self.same_color(attacker, defender):
+            raise Exception("Illegal to attack teammates!")
+        if self.is_bomb(attacker):
+            return attacker
+        elif self.is_bomb(defender):
+            return defender
+
+        return attacker
+
+    def same_color(self, piece1, piece2):
+        return self.color_of(piece1) == self.color_of(piece2)
+    
+    def color_of(self, piece):
+        if "red" in piece:
             return "red"
         return "blue"
+    
+    def color_at(self, row, column):
+        p = self.get_from(row, column)
+        return self.color_of(p)
 
     
     def abbr(self, piece):

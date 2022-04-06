@@ -32,3 +32,6 @@ Areas of the Game for Algorithms:
 
 6. Machine Learning?? (Whoever has the time :) )
 	- Datasets??
+
+Note on running unit-tests:
+	Use command: python3 -m unittest unit-tests.py
