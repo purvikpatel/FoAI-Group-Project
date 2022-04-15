@@ -33,19 +33,19 @@ class TestBoard(unittest.TestCase):
                              f" ({row},{column}) should have been {expected_bounds}.")
 
 
-class TestMovement(unittest.TestCase):
+class TestGame(unittest.TestCase):
 
     def setUp(self):
-        self.board = stratego.Board()
-        self.board.set_at("blue_bomb", 0, 0)
-        self.board.set_at("blue_one", 1, 1)
+        self.game = stratego.Game()
+        self.game.set_at("blue_bomb", 0, 0)
+        self.game.set_at("blue_one", 1, 1)
 
-        self.board.set_at("blue_five", 4,4)
-        self.board.set_at("blue_five", 3,4)
-        self.board.set_at("red_five", 4,5)
+        self.game.set_at("blue_five", 4,4)
+        self.game.set_at("blue_five", 3,4)
+        self.game.set_at("red_five", 4,5)
 
-        self.board.set_at("blue_nine", 9,8)
-        self.board.set_at("blue_flag", 9,9)
+        self.game.set_at("blue_nine", 9,8)
+        self.game.set_at("blue_flag", 9,9)
         
         
     def test_bombs_and_flag_cannot_move(self):
@@ -80,57 +80,93 @@ class TestMovement(unittest.TestCase):
         self.assertInvalidMove(4,4,3,4, "Place already occuppied by piece of the same color.")
 
         # Invalid to jump over a piece
-        self.board.set_at("blue_five", 5,8)
+        self.game.set_at("blue_five", 5,8)
         self.assertInvalidMove(9,8,0,8, "Nine/Scout should not be able to jump over pieces.")
 
         # Invalid move into no-mans land
-        self.board.set_at("blue_five", 3,2)
+        self.game.set_at("blue_five", 3,2)
         self.assertInvalidMove(3,2,4,2, "Illegal move into no-man's land.")
-        self.board.set_at("blue_five", 3,3)
+        self.game.set_at("blue_five", 3,3)
         self.assertInvalidMove(3,3,4,3, "Illegal move into no-man's land.")        
-        self.board.set_at("blue_five", 3,6)
+        self.game.set_at("blue_five", 3,6)
         self.assertInvalidMove(3,6,4,6, "Illegal move into no-man's land.")
-        self.board.set_at("blue_five", 3,7)
+        self.game.set_at("blue_five", 3,7)
         self.assertInvalidMove(3,7,4,7, "Illegal move into no-man's land.")        
-        self.board.set_at("red_five", 6,2)
+        self.game.set_at("red_five", 6,2)
         self.assertInvalidMove(6,2,5,2, "Illegal move into no-man's land.")
-        self.board.set_at("red_five", 6,3)
+        self.game.set_at("red_five", 6,3)
         self.assertInvalidMove(6,3,5,3, "Illegal move into no-man's land.")        
-        self.board.set_at("red_five", 6,6)
+        self.game.set_at("red_five", 6,6)
         self.assertInvalidMove(6,6,5,6, "Illegal move into no-man's land.")
-        self.board.set_at("red_five", 6,7)
+        self.game.set_at("red_five", 6,7)
         self.assertInvalidMove(6,7,5,7, "Illegal move into no-man's land.")
 
         # Invalid to jump over no-mans land
-        self.board.set_at("blue_nine", 5,0)
+        self.game.set_at("blue_nine", 5,0)
         self.assertInvalidMove(5,0,5,5, "Nine/Scout should not be able to jump over no-man's land.")
 
     def test_capturing(self):
         # Common attacking scenarios
-
+        self.assertVictor("red_one", "blue_two", "red_one")
+        self.assertVictor("red_two", "blue_three", "red_two")
+        
         # Tie goes to the attacker
         self.assertVictor("blue_five", "red_five", "blue_five")
         self.assertVictor("red_five", "blue_five", "red_five")
+
+        # Man vs Bomb
         self.assertVictor("red_five", "blue_bomb", "blue_bomb")
         self.assertVictor("blue_bomb", "red_five", "blue_bomb") #bomb's can't attack - but if they could...they'd win
-        
-        
-        # Common illegal capturing scenarios
-        #self.assertIsNotCapture("blue_five", "blue_five")
-        
-        
+        self.assertVictor("red_eight", "blue_bomb", "red_eight") #Miners can defuse bombs
+
+        # Spy
+        self.assertVictor("red_spy", "blue_one", "red_spy")
+        self.assertVictor("blue_one", "red_spy", "blue_one") #Spy must attack first to win
+        self.assertVictor("red_spy", "blue_spy", "red_spy")  #Tie goes to attacker
+        self.assertVictor("red_spy", "blue_two", "blue_two")
+
+        # Flag
+        self.assertVictor("red_nine", "blue_flag", "red_nine")
+
+    def test_game_over(self):
+        g = stratego.Game()
+        # Stalemate
+        g.set_at("blue_flag", 0, 0)
+        g.set_at("blue_bomb", 0, 1)
+        g.set_at("red_flag", 1, 1)
+        self.assertEqual("tie", g.game_over(), "Game should be over and a tie.")
+
+        # Blue wins
+        g = stratego.Game()
+        g.set_at("blue_flag", 0, 0)
+        self.assertEqual("blue", g.game_over(), "Game should be over and blue win.")
+
+        # Red wins
+        g = stratego.Game()
+        g.set_at("red_flag", 0, 0)
+        self.assertEqual("red", g.game_over(), "Game should be over and red win.")
+
+        # Game not over yet
+        g = stratego.Game()
+        g.set_at("red_flag", 0, 0)
+        g.set_at("blue_flag", 1, 1)
+        g.set_at("red_one", 0, 1)
+        self.assertFalse(g.game_over(), "Game should not be over yet.")
+
 
     def assertVictor(self, attacker, defender, expectedVictor):
-        actual = self.board.attack(attacker, defender)
+        actual = self.game.attack(attacker, defender)
         self.assertEqual(actual, expectedVictor, f"Expected {expectedVictor} to win the fight.")
         
     def assertValidMove(self, row, column, d_row, d_column, message):
-        actual = self.board.is_valid_move(row, column, d_row, d_column)
+        actual = self.game.is_valid_move(row, column, d_row, d_column)
         self.assertTrue(actual, "Piece should be able to move. " + message)
 
     def assertInvalidMove(self, row, column, d_row, d_column, message):
-        actual = self.board.is_valid_move(row, column, d_row, d_column)
+        actual = self.game.is_valid_move(row, column, d_row, d_column)
         self.assertFalse(actual, "Piece should not be able to move like that. " + message)        
 
+
+        
 if __name__ == '__main__':
     unittest.main()

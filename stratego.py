@@ -1,30 +1,14 @@
 import os
 import random
-import pygame as pg
-from pygame._sdl2 import Window, Texture, Image, Renderer
 from collections import defaultdict
 
 class Board:
 
     def __init__(self):
-        """Builds and initializes a board"""
+        """Initialize a new board"""
         self.board = []
         self.size = 10
-        self.initialize()
-        self.piece_value_lookup = {
-            "flag"  : 0,
-            "spy"   : 1,
-            "one"   : 1,
-            "two"   : 2,
-            "three" : 3,
-            "four"  : 4,
-            "five"  : 5,
-            "six"   : 6,
-            "seven" : 7,
-            "eight" : 8,
-            "nine"  : 9,
-            "bomb"  : 10 }
-
+        self.no_mans_land = set([(4,2),(4,3),(5,2),(5,3),(4,6),(4,7),(5,6),(5,7)])
         self.piece_name_conversion = {
             "flag"  : "F",
             "spy"   : "S",
@@ -37,9 +21,10 @@ class Board:
             "seven" : "7",
             "eight" : "8",
             "nine"  : "9",
-            "bomb"  : "B" }
-
-        self.no_mans_land = set([(4,2),(4,3),(5,2),(5,3),(4,6),(4,7),(5,6),(5,7)])
+            "bomb"  : "B",
+            "?"     : "?" }
+        self.initialize()
+        
 
     def initialize(self):
         """Create an empty board and fill it with None"""
@@ -58,7 +43,6 @@ class Board:
         """Returns the piece at (row, column) or False if the location is empty"""
         if not self.is_inbounds(row, column):
             raise(f"BoardLocationOutOfBounds ({row},{column})")
-        
         p = self.board[row][column]
         if p:
             return p
@@ -78,6 +62,14 @@ class Board:
         
         self.board[row][column] = None
 
+    def reduce(self, f, init_value=None):
+        """Run reduce over the board. This is a very flexible iterator abstraction over the board."""
+        acc = init_value
+        for row in self.board:
+            for piece in row:
+                acc = f(piece, acc)
+        return acc
+
     def is_inbounds(self, row, column):
         """Returns True if the (row, column) are within the 10 x 10 play space."""
         return 0 <= row < self.size and 0 <= column < self.size
@@ -85,20 +77,117 @@ class Board:
     def clone(self):
         """Returns a new board with an identical layout as the current board"""
         c = Board()
-        c.board = self.board[:]
+        c.board = []
+        for row in self.board:
+            c.board.append(row[:])
         return c
 
-    def is_valid_piece(self, piece):
-        """Validates the name of the piece"""
-        pass
+            
+    def is_path_clear(self, row, column, target_row, target_column):
+        start_row = min(row, target_row)
+        end_row = max(row, target_row)
+        start_column = min(column, target_column)
+        end_column = max(column, target_column)
+        while(True):
+            start_row += 0 if start_row == end_row else 1
+            start_column += 0 if start_column == end_column else 1
+            if (start_row == end_row and start_column == end_column):
+                return True
+            elif self.is_occuppied(start_row, start_column):
+                return False
+            elif (start_row, start_column) in self.no_mans_land:
+                return False
+        return True
+    
+    def abbr(self, piece):
+        color, rank = piece.split("_")
+        p = color.replace("red", "R").replace("blue", "B")
+        p += self.piece_name_conversion[rank]
+        return p
+    
+    def __str__(self):
+        """Blue pieces will be prefixed with a 'B', and Red pieces will have a 'R'"""
+        b = ""
+        for row in self.board:
+            b += "|".join([self.abbr(r) if r else "__" for r in row])
+            b += "\n"
+
+        return b
+        
+
+class Game:
+    def __init__(self):
+        self.piece_value_lookup = {
+            "flag"  : 0,
+            "spy"   : 0,
+            "one"   : 9,
+            "two"   : 8,
+            "three" : 7,
+            "four"  : 6,
+            "five"  : 5,
+            "six"   : 4,
+            "seven" : 3,
+            "eight" : 2,
+            "nine"  : 1,
+            "bomb"  : 100 }
+
+        self.board = Board()
+
+    def is_bomb(self, piece):
+        return "bomb" in piece
+
+    def is_flag(self, piece):
+        return "flag" in piece
+
+    def is_scout(self, piece):
+        return "nine" in piece
+
+    def is_miner(self, piece):
+        return "eight" in piece
+
+    def is_spy(self, piece):
+        return "spy" in piece
+
+    def is_marshall(self, piece):
+        return "one" in piece
+
+    def is_movable(self, piece):
+        return not(self.is_flag(piece) or self.is_bomb(piece))
+
+    def piece_value(self, piece):
+        color, rank = piece.split("_")
+        return self.piece_value_lookup[rank]
+    
+    def stronger_piece(self, a, b):
+        # Tie goes to the attacker
+        if self.piece_value(a) >= self.piece_value(b):
+            return a
+        return b
+    
+    def attack(self, attacker, defender):
+        """Return the piece that is victorious"""
+        if self.same_color(attacker, defender):
+            raise Exception("Illegal to attack teammates!")
+        if self.is_bomb(attacker):
+            return attacker
+        elif self.is_bomb(defender):
+            if self.is_miner(attacker):
+                return attacker
+            return defender
+        elif self.is_spy(attacker):
+            if self.is_marshall(defender):
+                return attacker
+        
+        return self.stronger_piece(attacker, defender)
 
     def is_valid_move(self, row, column, target_row, target_column):
         """Returns True if the piece at (row,column) is allowed to move to (target_row, target_column)"""
+        #print(f"({row},{column}) -> ({target_row},{target_column})")
         p = self.is_occuppied(row, column)
         if not p:
             raise Exception(f"MoveInvalid - no piece located at ({row}, {column}).")
 
-        if (target_row, target_column) in self.no_mans_land:
+        if self.in_no_mans_land(target_row, target_column):
             return False
         # Check if we are trying to move an immobile piece
         elif self.is_bomb(p) or self.is_flag(p):
@@ -119,43 +208,6 @@ class Board:
                 return self.is_path_clear(row, column, target_row, target_column)
             return False
         return True
-            
-    def is_path_clear(self, row, column, target_row, target_column):
-        start_row = min(row, target_row)
-        end_row = max(row, target_row)
-        start_column = min(column, target_column)
-        end_column = max(column, target_column)
-        while(True):
-            start_row += 0 if start_row == end_row else 1
-            start_column += 0 if start_column == end_column else 1
-            if (start_row == end_row and start_column == end_column):
-                return True
-            elif self.is_occuppied(start_row, start_column):
-                return False
-            elif (start_row, start_column) in self.no_mans_land:
-                return False
-        return True
-    
-    
-    def is_bomb(self, piece):
-        return "bomb" in piece
-
-    def is_flag(self, piece):
-        return "flag" in piece
-
-    def is_scout(self, piece):
-        return "nine" in piece
-
-    def attack(self, attacker, defender):
-        """Return the piece that is victorious"""
-        if self.same_color(attacker, defender):
-            raise Exception("Illegal to attack teammates!")
-        if self.is_bomb(attacker):
-            return attacker
-        elif self.is_bomb(defender):
-            return defender
-
-        return attacker
 
     def same_color(self, piece1, piece2):
         return self.color_of(piece1) == self.color_of(piece2)
@@ -169,23 +221,92 @@ class Board:
         p = self.get_from(row, column)
         return self.color_of(p)
 
-    
-    def abbr(self, piece):
-        color, rank = piece.split("_")
-        p = color.replace("red", "R").replace("blue", "B")
-        p += self.piece_name_conversion[rank]
-        return p
-        
-    
-    def __str__(self):
-        """Blue pieces will be prefixed with a 'B', and Red pieces will have a 'R'"""
-        b = ""
-        for row in self.board:
-            b += "|".join([self.abbr(r) if r else "__" for r in row])
-            b += "\n"
+    def is_path_clear(self, row, column, target_row, target_column):
+        return self.board.is_path_clear(row, column, target_row, target_column)
 
-        return b
+    def is_occuppied(self, row, column):
+        return self.board.is_occuppied(row, column)
+
+    def get_from(self, row, column):
+        return self.board.get_from(row, column)
+
+    def set_at(self, piece, row, column):
+        self.board.set_at(piece, row, column)
+
+    def remove_at(self, row, column):
+        self.board.remove_at(row, column)
+
+    def in_no_mans_land(self, row, column):
+        return (row,column) in self.board.no_mans_land
+
+    def board_contains(self, predicate):
+        f = lambda p, acc: acc or predicate(p)
+        return self.board.reduce(f, False)
+
+    def on_board(self, piece):
+        # Fun with higher-order functions :)
+        pred = lambda p : p == piece
+        return self.board_contains(pred)
+
+    def game_over(self):
+        """If game is over return winner color or 'tie' - else return False"""
+        if not self.on_board("red_flag"):
+            return "blue" 
+        elif not self.on_board("blue_flag"):
+            return "red"
+        movable_entries = lambda p: p is not None and self.is_movable(p)
+        if not self.board_contains(movable_entries):
+            return "tie"
+        return False
+
+    def board_as_seen_by(self, color):
+        opposite_color = "blue"
+        if color == opposite_color:
+            opposite_color = "red"
+        clone = board.clone()
+        for row in clone.board:
+            for i in range(len(row)):
+                if row[i] is not None and color not in row[i]:
+                    row[i] = opposite_color + "_?"
+        return clone
+
+    def start(self):
+        player = "blue"
+        while (not self.game_over()):
+            self.display_board()
+            b = self.board_as_seen_by(player)
+            move = self.select_move(player, b)
+            self.make_move(move)
+            player = self.next_turn(player)
+
+    def select_move(self, player, board):
+        print(f"======{player} Perspective============")
+        print(board)
+        return (3,0,4,0)
+
+    def next_turn(self, player):
+        if "red" in player:
+            return "blue"
+        return "red"
+
+    def display_board(self):
+        print("--------Full Perspective----------------")
+        print(self.board)
+
+    def make_move(self, move):
+        row, column, target_row, target_column = move
         
+        if not self.is_valid_move(row, column, target_row, target_column):
+            raise Exception("Requested illegal move!")
+        
+        attacker = self.get_from(row, column)
+        if self.is_occuppied(target_row, target_column):
+            defender = self.get_from(target_row, target_column)
+            victor = self.attack(attacker, defender)
+            self.set_at(victor, target_row, target_column)
+        else:
+            self.set_at(attacker, target_row, target_column)
+        self.remove_at(row, column)
 
 
 
@@ -223,113 +344,16 @@ def random_board():
                     row = []
 
         if color == "blue":
-            board.append([])
-            board.append([])
+            board.append([None for _ in range(board_columns)])
+            board.append([None for _ in range(board_columns)])
 
     b = Board()
     b.board = board
     return b
 
 
+board = random_board()
 
-
-
-
-
-
-
-
-
-
-
-
-#Code for getting image into sprite group
-#inspired by https://github.com/pygame/pygame/blob/main/examples/sprite_texture.py
-# and https://ehmatthes.github.io/pcc_2e/beyond_pcc/pygame_sprite_sheets/#a-simple-sprite-sheet
-
-class SpriteSheet():
-    def __init__(self, filepath):
-        self.img = pg.image.load(filepath).convert()
-
-    def cut_sheet(self, x, y, tile_size, offset, rows, columns):
-        """Return an array of rectangles that represent the parts of the sheet"""
-        sprites = []
-        t_x, t_y = x, y
-        for i in range(rows):
-            t_x = x
-            for j in range(columns):
-                rect = pg.Rect(t_x, t_y, x + tile_size, y + tile_size)
-                image = pg.Surface(rect.size).convert()
-                image.blit(self.img, (0,0), rect)
-                image.set_colorkey((255,255,255), pg.RLEACCEL)
-                sprites.append(image)
-                t_x += tile_size + offset
-            t_y += tile_size + offset
-        return sprites
-
-       
-
-
-def draw_piece(piece_name, x, y):
-    img = image_lookup[piece_name]
-    scale_x = 50
-    scale_y = 50
-    img = pg.transform.scale(img, (scale_x, scale_y))
-    rect = img.get_rect()
-    rect.topleft = x,y
-    screen.blit(img, rect)
-        
-def draw_board(board):
-    x,y = 10,10
-    tile_size = 60
-    for row in board:
-        x = 10
-        for piece in row:
-            if piece != "":
-                draw_piece(piece, x, y)
-            x += tile_size
-        y += tile_size
-            
-
-def start_game():
-
-    screen_width = 650
-    screen_height = 650
-    screen = pg.display.set_mode((screen_width, screen_height))
-    asset_dir = os.path.join(os.getcwd(), "assets")
-
-    pg.display.init()
-
-    sheet = SpriteSheet(os.path.join(asset_dir, "pieces.png"))
-    images_array = sheet.cut_sheet(5, 5, 90, 20, 4, 8)
-    names_of_pieces = ["spy", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "bomb", "flag"]
-    colors = ["blue", "red"]
-
-    image_lookup = {}
-    i = 0
-    for color in colors:
-        for piece in names_of_pieces:
-            key = f"{color}_{piece}"
-            image_lookup[key] = images_array[i]
-            i += 1
-        i = 16
-
-
-    b = random_board()
-    board = b.board
-
-    clock = pg.time.Clock()
-
-    running = True
-    while running:
-        for event in pg.event.get():
-            if event.type == pg.QUIT:
-                running = False
-
-        screen.fill((255,255,255))
-        draw_board(board)
-        pg.display.flip()
-        clock.tick(60)
-
-
-    pg.quit()
+game = Game()
+game.board = board
+game.start()
