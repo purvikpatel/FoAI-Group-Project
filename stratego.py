@@ -352,8 +352,8 @@ def random_board():
     return b
 
 
-board = random_board()
+# board = random_board()
 
-game = Game()
-game.board = board
-game.start()
+# game = Game()
+# game.board = board
+# game.start()

@@ -21,6 +21,7 @@ Areas of the Game for Algorithms:
 
 3. Inference of Enemy at Given Position (Alex)
 	- Bayes Probability of who's at the square
+	- Delivarable will be a function that someone can call to give the best guess of who is at a given position.
 
 4. Strategy (Vikram)
 	- Utility Score based on heuristic
