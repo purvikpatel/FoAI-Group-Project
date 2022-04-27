@@ -5,23 +5,21 @@ class Spy:
         """The goal of Spy is to watch the progressive game states to try and 
            figure out the enemy pieces"""
         self.remaining_enemy_pieces = self.count_pieces(board)
-        self.state = []
+        self.state = {}
         self.color = None
 
         starting_distribution = self.calc_distribution(self.remaining_enemy_pieces)        
-        for row in board:
-            r = []
-            for piece in row:
+        for row, columns in enumerate(board):
+            for column, piece in enumerate(columns):                
                 if piece is None:
-                    r.append(None)
                     continue
                 p = self.normalize_piece(piece)
                 if self.is_known_piece(p):
-                    self.color = self.piece_color(piece)
-                    r.append({p : 1.0})
+                    self.state[(row,column)] = {p : 1.0}
+                    if self.color is None:
+                        self.color = self.piece_color(piece)
                 else:
-                    r.append(starting_distribution.copy())
-            self.state.append(r)
+                    self.state[(row,column)] = starting_distribution.copy()             
     
     def count_pieces(self, board):
         pieces = defaultdict(lambda: 0)
@@ -44,18 +42,14 @@ class Spy:
         return dist
 
     def rebuild_state_distribution(self):
-        new_state = []
+        new_state = {}
         dist = self.calc_distribution(self.remaining_enemy_pieces)
-        for row in self.state:
-            r = []
-            for d in row:
-                if d is None:
-                    r.append(None)
-                elif len(d) == 1:
-                    r.append(d)
-                else:
-                    r.append(dist.copy())
-            new_state.append(r)
+        for coord, d in self.state.items():
+            if len(d) == 1:
+                new_state[coord] = d
+            else:
+                new_state[coord] = dist.copy()
+            
         self.state = new_state
     
                             
@@ -70,18 +64,23 @@ class Spy:
         color, rank = piece.split("_")
         return color
 
+    def move_dist(self, start_row, start_column, end_row, end_column):
+        return max(abs(start_row - end_row), abs(start_column - end_column))
+
     def update(self, start_row, start_column, end_row, end_column, remained=None, removed=None):
         """Update probability distributions based on move"""
         if removed is None:
-            self.state[end_row][end_column] = self.state[start_row][start_column]
-            self.state[start_row][start_column] = None
+            if self.move_dist(start_row, start_column, end_row, end_column) > 1:
+                self.state[(end_row, end_column)] = {"nine" : 1.0}
+            else:
+                self.state[(end_row, end_column)] = self.state[(start_row, start_column)]
+            self.state.pop((start_row, start_column))
             return
 
         p = self.normalize_piece(remained)
-        self.state[end_row][end_column] = {p : 1.0}
-        self.state[start_row][start_column] = None
-            
-        
+        self.state[(end_row,end_column)] = {p : 1.0}
+        self.state.pop((start_row, start_column))
+
         discovered_piece = self.normalize_piece(removed)
         if self.piece_color(removed) == self.color:
             discovered_piece = self.normalize_piece(remained)
@@ -93,10 +92,9 @@ class Spy:
     def at(self, row, column):
         """Return the most likely piece at (row, column) and the confidence level between 0 and 1.0 (0 is no confidence, and 1 is known)"""
 
-        dist = self.state[row][column]
+        dist = self.state[(row,column)]
         max_prob = float("-inf")
         max_piece = None
-        print(dist)
         for piece, prob in dist.items():
             if prob > max_prob:
                 max_prob = prob

@@ -42,7 +42,7 @@ class TestPieceInference(unittest.TestCase):
         piece, prob = spy.at(0,1)
         self.assertTrue(piece == "nine" or piece == "flag")
         self.assertAlmostEqual(prob, 0.5, delta=0.00001)
-        spy.update(1,2,2,2)
+        spy.update(0,2,2,2)
         piece, prob = spy.at(2,2)
         self.assertTrue(piece == "nine")
         self.assertAlmostEqual(prob, 1.0, delta=0.00001)
