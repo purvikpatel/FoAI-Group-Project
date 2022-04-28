@@ -263,7 +263,7 @@ class Game:
         opposite_color = "blue"
         if color == opposite_color:
             opposite_color = "red"
-        clone = board.clone()
+        clone = self.board.clone()
         for row in clone.board:
             for i in range(len(row)):
                 if row[i] is not None and color not in row[i]:

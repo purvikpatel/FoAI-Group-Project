@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+
 class Spy:
     def __init__(self, board):
         """The goal of Spy is to watch the progressive game states to try and 
@@ -7,6 +8,20 @@ class Spy:
         self.remaining_enemy_pieces = self.count_pieces(board)
         self.state = {}
         self.color = None
+        self.rank_lookup = {
+            "flag"  : 0,
+            "spy"   : 0,
+            "one"   : 9,
+            "two"   : 8,
+            "three" : 7,
+            "four"  : 6,
+            "five"  : 5,
+            "six"   : 4,
+            "seven" : 3,
+            "eight" : 2,
+            "nine"  : 1,
+            "bomb"  : 100 }
+        
 
         starting_distribution = self.calc_distribution(self.remaining_enemy_pieces)        
         for row, columns in enumerate(board):
@@ -33,10 +48,14 @@ class Spy:
         return pieces
 
 
-    def calc_distribution(self, pieces):
-        total_pieces = sum([v for k,v in pieces.items()])
+    def calc_distribution(self, pieces, pred = None):
+        if pred is None:
+            pred = lambda v : v
+        total_pieces = sum([v for k,v in pieces.items() if pred(k)])
         dist = {}
         for piece, count in pieces.items():
+            if not pred(piece):
+                continue
             dist[piece] = float(count) / total_pieces
 
         return dist
@@ -67,6 +86,12 @@ class Spy:
     def move_dist(self, start_row, start_column, end_row, end_column):
         return max(abs(start_row - end_row), abs(start_column - end_column))
 
+    def remove_bomb_or_flag_probabilities(self, row, column):
+        no_flags_or_bombs = lambda k : not(k == "bomb" or k == "flag")
+        dist = self.calc_distribution(self.remaining_enemy_pieces, pred = no_flags_or_bombs)
+        self.state[(row, column)] = dist
+        
+    
     def update(self, start_row, start_column, end_row, end_column, remained=None, removed=None):
         """Update probability distributions based on move"""
         if removed is None:
@@ -74,6 +99,7 @@ class Spy:
                 self.state[(end_row, end_column)] = {"nine" : 1.0}
             else:
                 self.state[(end_row, end_column)] = self.state[(start_row, start_column)]
+                self.remove_bomb_or_flag_probabilities(end_row, end_column)
             self.state.pop((start_row, start_column))
             return
 
@@ -90,14 +116,25 @@ class Spy:
                 
     
     def at(self, row, column):
-        """Return the most likely piece at (row, column) and the confidence level between 0 and 1.0 (0 is no confidence, and 1 is known)"""
-
+        """Return the probability distribution at (row, column)"""
         dist = self.state[(row,column)]
-        max_prob = float("-inf")
+        return dist
+
+    def max_rank(self, a, b):
+        if self.rank_lookup[a] > self.rank_lookup[b]:
+            return a
+        return b
+
+    def max_at(self, row, column):
+        """Returns (piece, prob) with the highest probability at (row,column) and on equal return the higher ranking piece"""
+        dist = self.state[(row,column)]
         max_piece = None
+        max_prob = float("-inf")
         for piece, prob in dist.items():
             if prob > max_prob:
                 max_prob = prob
                 max_piece = piece
+            if prob == max_prob:
+                max_piece = self.max_rank(max_piece, piece)
 
         return (max_piece, max_prob)
