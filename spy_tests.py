@@ -26,12 +26,7 @@ class TestPieceProbabilityDistribution(unittest.TestCase):
         self.assertAlmostEqual(dist["seven"], 0.1,   delta=0.00001)
         self.assertAlmostEqual(dist["eight"], 0.125, delta=0.00001)
         self.assertAlmostEqual(dist["nine"],  0.2,   delta=0.00001)
-
-    def test_single_item_board(self):
-        board = [["blue_flag"]]
-        spy = Spy(board)
-        dist = spy.at(0,0)
-        self.assertAlmostEqual(dist["flag"], 1.0, delta=0.00001)
+        
 
     def test_simple_board(self):
         board = [["blue_flag", "red_?"]]
@@ -62,15 +57,17 @@ class TestPieceProbabilityDistribution(unittest.TestCase):
 
     def test_movement_means_not_flag_or_bomb(self):
         board = [["blue_flag", "red_?", "red_?"],
-                 ["blue_bomb", "red_?", None],
+                 ["blue_three", "red_?", None],
                  ["blue_five", None, None]]
         spy = Spy(board)
         dist = spy.at(0,1)
         self.assertAlmostEqual(dist["flag"], 0.3333333, delta=0.00001)
         piece,prob = spy.max_at(0,1)
-        self.assertEqual("bomb", piece)
+        self.assertEqual("three", piece)
         self.assertAlmostEqual(prob, 0.3333333, delta=0.00001)
         spy.update(0,2,1,2)
         dist = spy.at(1,2)
-        self.assertAlmostEqual(dist["five"], 1.0, delta=0.00001)
-
+        self.assertAlmostEqual(dist["five"], 0.5, delta=0.00001)
+        piece, prob = spy.max_at(0,1)
+        self.assertEqual("flag", piece)
+        
