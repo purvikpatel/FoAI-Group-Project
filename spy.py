@@ -3,7 +3,7 @@ from collections import defaultdict
 
 class Spy:
     def __init__(self, board):
-        """The goal of Spy is to watch the enemy moves to try and 
+        """The goal of Spy is to watch the players moves to try and 
            figure out the enemy pieces.
         
         board : The board as seen from the perspective of a single player. It is assumed that
@@ -12,6 +12,7 @@ class Spy:
         self.remaining_enemy_pieces = self.count_pieces(board)
         self.state = {}
         self.color = None
+        self.enemy_color = None
         self.rank_lookup = {
             "flag"  : 0,
             "spy"   : 0,
@@ -35,6 +36,7 @@ class Spy:
                 p = self.normalize_piece(piece)
                 if self.is_known_piece(p) and self.color is None:
                     self.color = self.piece_color(piece)
+                    self.enemy_color = self.opposite_color(self.color)
                 else:
                     self.state[(row,column)] = starting_distribution.copy()             
     
@@ -49,7 +51,11 @@ class Spy:
                     pieces[p] += 1
         return pieces
 
-
+    def opposite_color(self, color):
+        if color == "red":
+            return "blue"
+        return "red"
+        
     def calc_distribution(self, pieces, pred = None):
         if pred is None:
             pred = lambda v : v
@@ -126,14 +132,8 @@ class Spy:
         no_flags_or_bombs = lambda k : not(k == "bomb" or k == "flag")
         dist = self.calc_distribution(self.remaining_enemy_pieces, pred = no_flags_or_bombs)
         self.state[(row, column)] = dist
-        
-    
-    def update(self, start_row, start_column, end_row, end_column, remained=None, removed=None):
-        """Update probability distributions based on enemy move"""
-        if (start_row, start_column) not in self.state:
-            raise Exception(f"Expected to find enemy at ({start_row}, {start_column})")
 
-
+    def __on_enemy_turn(self, start_row, start_column, end_row, end_column, remained=None, removed=None):
         if removed is None:
             if self.move_dist(start_row, start_column, end_row, end_column) > 1:
                 self.state[(end_row, end_column)] = {"nine" : 1.0}
@@ -153,6 +153,35 @@ class Spy:
             discovered_piece = self.normalize_piece(remained)
             
         self.remaining_enemy_pieces[discovered_piece] -= 1
+
+    def __on_player_turn(self, start_row, start_column, end_row, end_column, remained=None, removed=None):
+        if removed is None:
+            return
+
+        enemy_piece = removed
+        if not self.is_enemy_piece(enemy_piece):
+            enemy_piece = remained
+
+        p = self.normalize_piece(enemy_piece)
+        self.state[(end_row,end_column)] = {p : 1.0}            
+        self.remaining_enemy_pieces[p] -= 1
+
+            
+            
+
+    def is_enemy_piece(self, piece):
+        color = self.piece_color(piece)
+        return color == self.enemy_color
+            
+        
+    def update(self, start_row, start_column, end_row, end_column, remained=None, removed=None):
+        """Update probability distributions based on move"""
+
+        if (start_row, start_column) in self.state:
+            self.__on_enemy_turn(start_row, start_column, end_row, end_column, remained, removed)
+        else:
+            self.__on_player_turn(start_row, start_column, end_row, end_column, remained, removed)
+
         self.rebuild_state_distribution()
                 
     

@@ -54,7 +54,7 @@ class TestPieceProbabilityDistribution(unittest.TestCase):
         spy.update(0,2,2,2)
         dist = spy.at(2,2)
         self.assertAlmostEqual(dist["nine"], 1.0, delta=0.00001)
-
+        
     def test_movement_means_not_flag_or_bomb(self):
         board = [["blue_flag", "red_?", "red_?"],
                  ["blue_three", "red_?", None],
