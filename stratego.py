@@ -1,6 +1,7 @@
 import os
 import random
 from collections import defaultdict
+from GeneticAlgorithm import genetic_algoritgm
 
 class Board:
 
@@ -351,9 +352,35 @@ def random_board():
     b.board = board
     return b
 
+def create_new_board():
+    b = Board()
+    b.initialize()
+    ga = genetic_algoritgm(100, 10000,  0.4, 0.6)
+    ga.execute()
+    i = random.sample(range(10), 2)
 
-# board = random_board()
+    blue_board = ga.population[i[0]]
+    red_board = ga.population[i[1]]
 
-# game = Game()
-# game.board = board
+    
+    for i in range(4):
+        for j in range(10):
+            x = blue_board[i][j]
+            b.board[i][j] = f"blue_{x}"
+    
+    for i in reversed(range(6,10)):
+        for j in reversed(range(10)):
+            x = red_board[9-i][9 -j]
+            b.board[i][j] = f"red_{x}"
+        
+    return b
+
+
+
+
+board = create_new_board()
+
+game = Game()
+game.board = board
+game.display_board()
 # game.start()

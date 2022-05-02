@@ -134,7 +134,7 @@ class genetic_algoritgm:
 
     
     def execute(self):
-        #self.createPopulation()
+        self.createPopulation()
         for _ in range(self.generation):
             probabilities = self.calculate_fitness_probabilities()
             self.population = self.rouletteSelection(probabilities)
