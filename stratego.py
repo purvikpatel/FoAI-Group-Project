@@ -2,7 +2,7 @@ import os
 import random
 from collections import defaultdict
 from GeneticAlgorithm import genetic_algoritgm
-
+from heuristic import Heuristic
 class Board:
 
     def __init__(self):
@@ -282,6 +282,7 @@ class Game:
 
     def select_move(self, player, board):
         print(f"======{player} Perspective============")
+        move = Heuristic.get_best_board(board, player)
         print(board)
         return (3,0,4,0)
 
