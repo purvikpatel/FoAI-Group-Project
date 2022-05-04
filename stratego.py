@@ -384,4 +384,8 @@ board = create_new_board()
 game = Game()
 game.board = board
 game.display_board()
+
+heuristic = Heuristic(game.board)
+print(heuristic.evaluate())
+
 # game.start()

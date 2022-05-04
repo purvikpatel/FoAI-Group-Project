@@ -1,4 +1,3 @@
-from curses.ascii import SP
 import random
 from spy import Spy
 import copy
@@ -9,18 +8,10 @@ import utils
 class Heuristic:
     def __init__(self, board):
         self.board = board
-        self.starting_quantities = Spy()
-        self.current_board = self.get_current_board()
-
-    def get_current_board(self):
-        current_board = { k: 0 for k in self.starting_quantities.keys() }
-        for row in self.board:
-            for piece in row:
-                current_board[piece] += 1
-        return current_board
+        self.starting_quantities = Spy(self.board)
 
     def evaluate(self):
-        current_board = self.current_board
+        current_board = self.board
         starting_quantities = self.starting_quantities
         score = 0
         for key in starting_quantities.keys():
@@ -56,7 +47,6 @@ class MinMax():
     def __init__(self, board):
         self.board = board
         self.starting_quantities = Spy()
-        self.current_board = self.get_current_board()
 
     def __init__(self, team, depth=None):
         super(MinMax, self).__init__(team=team)
@@ -356,3 +346,4 @@ class MinMax():
         before_piece.position = last_move[0]
         board[last_move[1]] = self.pieces_last_N_Moves_afterPos.pop_last()
         return board
+
